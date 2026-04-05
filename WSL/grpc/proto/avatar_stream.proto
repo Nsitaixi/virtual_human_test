@@ -1,0 +1,47 @@
+syntax = "proto3"; //声明语法版本
+
+package avatar; //定义一个包名avatar，避免命名冲突。当这个文件被编译成代码时，生成的类会放在avatar这个命名空间/包下。在其他文件引用这里的消息类型时，就要用avatar.StreamRequest这样的全名
+
+enum RequestMode{ //定义一个枚举类型，用于区分客户端请求的模式
+  REQUEST_MODE_UNSPECIFIED = 0; //客户端没有明确设置模式使用的默认值
+  REQUEST_MODE_AUDIO = 1; //表示音频模式：客户端上传一段预先录好的音频文件（WAV格式）让服务器处理
+  REQUEST_MODE_TEXT = 2; //表示文本模式：客户端直接发送一段文字，服务器内部会先用TTS生成音频，再继续后续的处理
+  REQUEST_MODE_MIC = 3; //表示麦克风模式：客户端实时从麦克风采集音频流发送
+}
+
+message StreamRequest{ //定义一个消息类型。相当于C语言的结构体，包含若干个字段
+  int32 seq = 1; //序列号。使用seq可以让客户端把响应和请求一一对应起来，例如第3个请求的响应里seq就是3。
+  RequestMode mode = 2; //字段类型是前面定义的枚举RequestMode，字段名mode。用来告诉服务器这次请求使用哪种模式（音频/文本/麦克风）
+  string text = 3; //字段类型是UTF-8字符串。当mode是REQUEST_MODE_TEXT时，这个字段存放要合成的文字内容；其他模式下可以忽略
+  bytes wav = 4; //字段类型是二进制数据。当mode是REQUEST_MODE_AUDIO或REQUEST_MODE_MIC时，这个字段存放WAV音频文件的原始字节
+  bool want_audio = 5; //表示客户端是否希望服务器在响应中返回生成的音频（例如在文本模式下，服务器会生成TTS音频。如果want_audio为true，响应里就带上这段音频；否则不带上，节省流量）
+  bool want_face = 6; //表示客户端是否希望服务器返回面部表情数据（ARKit的52个blendshape权重）
+  bool want_body =7; //表示客户端是否希望返回身体动作数据（比如骨骼旋转值）
+}
+
+message FaceBlendShape{ //定义一个专门用于面部表情的消息类型。它会被嵌套在StreamResponse里使用
+  repeated string names = 1; //repeated表示这个字段可以出现0次或多次，相当于一个数组/列表。每个元素是string类型，存放blendshape的名字（例如"browDownLeft"、"eyeBlinkLeft"等）
+  repeated float weights = 2; //每个元素是float（32位浮点数），存放对应名字的权重值，通常在0~1之间
+}
+
+message BodyMotion{ //定义一个用于身体动作的消息类型
+  repeated string channel_names = 1; //存放身体骨骼通道的名称，比如"motion_0"、"motion_1"，或者更语义化的名字
+  repeated float values = 2; //存放对应通道的数值（比如欧拉角、四元数或轴角值）
+  string format =3; //描述values里的数据编码格式，例如"axis_angle_flat"表示是轴角格式展平为一维数组。这样客户端知道如何解析这些浮点数
+}
+
+message StreamResponse{ //定义服务器返回给客户端的响应消息类型。每个请求（StreamRequest）会对应一个或多个响应（因为是流式）
+  int32 seq = 1;
+  bytes wav = 2; //如果请求中want_audio为true，且服务器生成了音频（例如文本模式下的TTS结果），这里就存放完整的WAV文件字节
+  FaceBlendShape face =3; //类型是前面定义的消息FaceBlendShape。存放面部表情数据（仅当请求中want_face为true时有效）
+  BodyMotion body =4; //存放身体动作数据（仅当请求中want_body为true时有效）
+  string emotion = 5; //识别出的情绪标签，例如"neutral"、"happy"、"sad"等
+  string status =6; //表示处理状态，正常时返回"ok"，如果出错则返回错误描述信息
+}
+
+service AvatarService{ //定义一个服务（service）。服务就是一组可以由客户端调用的 远程过程调用（RPC）方法。在 gRPC 中，服务定义在proto文件里，服务器实现它，客户端通过存根（stub）调用它
+  rpc StreamInfer(stream StreamRequest) returns(stream StreamResponse); //定义了一个RPC方法，名叫StreamInfer
+                                                                        //stream StreamRequest：表示 客户端会以流式方式发送多个 StreamRequest 消息（不是一次性发完，而是一边生成一边发）。
+                                                                        //returns (stream StreamResponse)：表示 服务器也会以流式方式返回多个 StreamResponse 消息（一边处理一边返回）。
+                                                                        //这种“双向流”的模式非常适合实时交互场景：客户端不断上传音频片段或文字，服务器实时返回面部/身体动作数据，甚至可以边合成语音边返回音频。
+}

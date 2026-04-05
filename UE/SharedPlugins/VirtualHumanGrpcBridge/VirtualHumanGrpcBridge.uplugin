@@ -1,0 +1,42 @@
+//这个文件是一个 Unreal Engine 插件的“身份证”和“说明书”，告诉引擎这个插件叫什么、有什么功能、依赖哪些其他插件、在什么时候加载等
+
+{
+  "FileVersion": 3,  //这个 .uplugin 文件本身使用的格式版本号
+  "Version": 1,  //插件自己的版本号（整数）
+  "VersionName": "1.0",  //插件版本的字符串形式。在编辑器里看到的版本名称
+  "FriendlyName": "VirtualHumanGrpcBridge",  //插件的显示名称
+  "Description": "gRPC bridge for Virtual Human audio/text driven MetaHuman control",  //插件的描述文字。它是一个桥接器，可以通过 gRPC 网络协议接收音频或文字，然后驱动虚幻引擎里的 MetaHuman 角色（表情、身体动作）
+  "Category": "Animation",  //插件所属的分类。在编辑器插件列表里，这个插件会被归类到“Animation”（动画）下面
+  "CreatedBy": "Nsitaixi",  //插件的创建者名称
+  "EnabledByDefault": true,  //当插件被放到项目的 Plugins 文件夹后，是否默认启用
+  "CanContainContent": false,  //插件是否能够包含资源文件（比如图片、模型、声音、动画蓝图等）。本例：false，说明这是一个纯代码插件
+                               //true：插件里可以有一个 Content 文件夹，里面放各种资源
+                               //false：插件只有代码（C++ 或蓝图类），没有美术资源
+  "IsBetaVersion": false,  //标记是否为测试版
+  "Installed": false,  //插件是否是“已安装”状态。本例：false，表示这是一个项目插件，不是引擎自带的
+                       //true：插件是预先安装在引擎目录或市场安装的，用户不能直接修改源码
+                       //false：插件是项目自带的（放在项目的 Plugins 文件夹），可以随意修改
+  "Modules": [  //开始定义插件的模块列表。一个插件可以由一个或多个“模块”组成，每个模块是一组 C++ 代码，有自己独立的编译设置。
+    {
+      "Name": "VirtualHumanGrpcBridge",  //模块的名字。这个名字必须和模块的 .Build.cs 文件名完全一致。
+      "Type": "Runtime",  //模块的加载类型
+                          //Runtime：在任何时候（编辑器、打包后的游戏）都会加载
+                          //Editor：只在编辑器里加载，打包后的游戏不包含
+                          //Developer：只在开发（编辑器或开发版游戏）时加载
+      "LoadingPhase": "Default"  //模块在引擎启动的哪个阶段加载
+                                 //Default：在引擎核心初始化之后、游戏模块加载之前加载，最常用。
+                                 //PreDefault：更早一点。
+                                 //PostEngineInit：引擎初始化完毕之后
+    }
+  ],
+  "Plugins": [  //开始定义此插件依赖的其他插件。告诉引擎，我这个插件需要用到其他插件提供的功能，请确保那些插件也被启用。
+    {
+      "Name": "ControlRig",  //依赖插件的名称。ControlRig 是 Unreal 引擎自带的一个插件，专门用来制作和驱动复杂的骨骼控制（比如 MetaHuman 的身体、面部控制）
+      "Enabled": true  //是否启用这个依赖插件。true 表示如果项目里没有开启 ControlRig，引擎会自动帮你开启它
+    },
+    {
+      "Name": "RigVM",  //依赖插件的名称。RigVM 是 ControlRig 底层使用的“虚拟机”，用来执行控制逻辑。ControlRig 依赖它，所以插件也间接需要它。直接依赖它，确保万无一失
+      "Enabled": true
+    }
+  ]
+}

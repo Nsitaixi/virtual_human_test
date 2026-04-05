@@ -1,0 +1,103 @@
+#Windows端重新部署gRPC C++环境
+
+
+#首先在Windows PowerShell里清除缓存
+Remove-Item -Recurse -Force D:\Nsitaixi\Unreal\gRPC -ErrorAction SilentlyContinue  //删除整个 D:\Nsitaixi\Unreal\gRPC 文件夹（包括里面的所有子文件夹和文件）。把旧的 gRPC 文件夹彻底删掉，避免残留文件干扰新的编译。
+                                                                                   //Remove-Item：删除命令
+                                                                                   //-Recurse：递归删除，也就是删除文件夹内所有的子文件夹和文件
+                                                                                   //-Force：强制删除，即使文件是只读或隐藏的也会删掉
+                                                                                   //-ErrorAction SilentlyContinue：如果遇到错误（比如文件夹本来就不存在），不显示错误，继续往下执行
+New-Item -ItemType Directory -Path D:\Nsitaixi\Unreal\gRPC\src, D:\Nsitaixi\Unreal\gRPC\build, D:\Nsitaixi\Unreal\gRPC\install | Out-Null  //创建三个子文件夹：src（存放源码）、build（存放编译中间文件）、install（存放最终安装好的库和头文件）
+                                                                                                                                           //New-Item：创建新项目（可以是文件或文件夹）
+                                                                                                                                           //-ItemType Directory：创建的是目录（文件夹）
+                                                                                                                                           //-Path：后面跟着要创建的路径，用逗号分隔多个路径
+                                                                                                                                           //| Out-Null：把命令的输出信息扔掉，不在屏幕上显示
+
+#cmd中克隆gRPC源码
+cd /d D:\Nsitaixi\Unreal\gRPC\src
+git clone --recurse-submodules -b v1.78.1 --depth 1 --shallow-submodules https://github.com/grpc/grpc  //从 GitHub 上克隆 gRPC 的源代码，版本为 v1.78.1，并且把依赖的其他小库也一起下下来，但只下最新版本，不下历史。
+                                                                                                       //git clone：下载一个完整的 Git 仓库到本地
+                                                                                                       //--recurse-submodules：gRPC 依赖很多第三方子模块（如 protobuf、abseil、cares 等），这个参数会一并下载这些子模块
+                                                                                                       //-b v1.78.1：指定要下载的分支或标签，这里是 v1.78.1 版本
+                                                                                                       //--depth 1：只下载最新的那次提交，不下载整个历史记录，这样可以大大加快下载速度
+                                                                                                       //--shallow-submodules：对子模块也采用同样的浅克隆（只下载最新提交）
+                                                                                                       //https://github.com/grpc/grpc：gRPC 源码的地址
+
+
+#打开 “x64 Native Tools Command Prompt for VS 2022”，配置并编译  //这是一个特殊的命令行窗口，里面设置好了 Visual Studio 的编译环境变量（如 cl.exe、link.exe 的路径）。不能使用普通的 CMD 或 PowerShell。
+
+cd /d D:\Nsitaixi\Unreal\gRPC\src\grpc  //在这个目录里使用 CMake 配置 gRPC 的编译项目
+
+cmake -S . -B D:\Nsitaixi\Unreal\gRPC\build ^  //cmake 调用 CMake 程序（需要提前安装好 CMake，并添加到 PATH）
+                                               //-S 指定源代码目录。. 表示当前目录（即 D:\Nsitaixi\Unreal\gRPC\src\grpc）
+                                               //-B 指定构建目录（build directory），即存放中间文件（如 .obj、.sln）的地方
+  -G "Visual Studio 17 2022" ^  //-G 指定生成器（generator）。Visual Studio 17 2022 表示生成 Visual Studio 2022 的解决方案（.sln 文件）
+  -A x64 ^  //-A 指定目标平台架构。x64 表示 64 位。
+  -T v143 ^  //-T 指定工具集（toolset）。v143 是 Visual Studio 2022 的编译器工具集版本。
+  -DCMAKE_INSTALL_PREFIX=D:\Nsitaixi\Unreal\gRPC\install ^  //-D 定义 CMake 变量
+                                                            //CMAKE_INSTALL_PREFIX 是安装路径，执行 cmake --install 时会把编译好的库、头文件等复制到这个目录
+  -DCMAKE_CXX_STANDARD=20 ^  //设置 C++ 标准为 C++20
+  -DBUILD_SHARED_LIBS=OFF ^  //BUILD_SHARED_LIBS 控制是否编译成动态链接库（.dll）。OFF 表示编译成静态库（.lib）。我们要静态库，这样不需要把一堆 dll 拷到 Unreal 里。
+  -DgRPC_INSTALL=ON ^  //启用安装步骤。允许执行 cmake --install 时把文件复制到 install 目录
+  -DgRPC_BUILD_TESTS=OFF ^  //不编译 gRPC 自带的测试代码
+  -DgRPC_ABSL_PROVIDER=module ^  //module 显式告诉 gRPC 的构建系统：不要自己去网上下载这些依赖库，而是使用 gRPC 源码自带的子模块版本（即我们之前用 --recurse-submodules 下载的那些）
+  -DgRPC_CARES_PROVIDER=module ^
+  -DgRPC_RE2_PROVIDER=module ^
+  -DgRPC_SSL_PROVIDER=module ^
+  -DgRPC_ZLIB_PROVIDER=module ^
+  -DgRPC_PROTOBUF_PROVIDER=module ^
+  -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL  //指定 C++ 运行时库为 多线程动态链接版本（/MD）。这个要与 Unreal 使用的运行时库一致。Unreal 默认也用 /MD，这样可以避免链接冲突。
+
+cmake --build D:\Nsitaixi\Unreal\gRPC\build --config Release --target install --parallel 8  //开始编译并安装 gRPC。即编译完成后自动把 .lib 文件、头文件等拷贝到 install 文件夹
+                                                                                            //--build：告诉 CMake 执行构建操作。
+                                                                                            //D:\Nsitaixi\Unreal\gRPC\build：构建目录（之前配置生成的项目文件位置）
+                                                                                            //--config Release：以 Release 模式编译（优化速度，去掉调试信息）
+                                                                                            //--target install：指定构建目标为 install，即编译完后自动运行安装步骤
+                                                                                            //--parallel 8：使用 8 个 CPU 核心并行编译，加快速度
+
+
+#使用proto文件生成代码（cmd）
+
+cd /d D:\Nsitaixi\Unreal\SharedPlugins\VirtualHumanGrpcBridge  //进入插件根目录（里面包含 Protos 文件夹和 ThirdParty 等）
+
+set GRPC_SDK_ROOT=D:\Nsitaixi\Unreal\gRPC\install  //设置环境变量 GRPC_SDK_ROOT 指向 gRPC 安装目录。方便找到 protoc.exe 和 grpc_cpp_plugin.exe
+
+%GRPC_SDK_ROOT%\bin\protoc.exe ^  //调用 protoc 编译器，把 .proto 文件生成 C++ 代码
+  -I .\Protos ^  //-I 指定 proto 文件的搜索路径（import 路径）
+  --cpp_out=.\ThirdParty\GrpcProto\include ^  //--cpp_out 指定生成的标准 protobuf 代码（.pb.h 和 .pb.cc）的输出目录
+  --grpc_out=.\ThirdParty\GrpcProto\include ^  //--grpc_out 指定生成的 gRPC 服务代码（.grpc.pb.h 和 .grpc.pb.cc）的输出目录
+  --plugin=protoc-gen-grpc=%GRPC_SDK_ROOT%\bin\grpc_cpp_plugin.exe ^  //--plugin 指定用于生成 gRPC 代码的插件
+  .\Protos\avatar_stream.proto  //要编译的 .proto 文件路径
+
+#手动将include目录下的.cc文件放到src目录下
+
+
+#构建VirtualHumanGrpcProto.lib（x64 Native Tools Command Prompt for VS 2022）
+
+cd /d D:\Nsitaixi\Unreal\SharedPlugins\VirtualHumanGrpcBridge\ThirdParty\GrpcProto  //进入 GrpcProto 文件夹，里面应该有 CMakeLists.txt 和 include、src 子目录
+
+rmdir /s /q build  //删除旧的 build 和 install 文件夹，保证全新编译
+                   // /s 删除目录树，/q 安静模式（不提示确认）
+rmdir /s /q install
+
+set GRPC_SDK_ROOT=D:\Nsitaixi\Unreal\gRPC\install  //设置环境变量，让 CMake 能找到 gRPC
+
+cmake -S . -B build ^  //-S .：源代码在当前目录（即 GrpcProto 文件夹）
+                       //-B build：构建目录为 build 子文件夹
+  -G "Visual Studio 17 2022" ^
+  -A x64 ^
+  -T v143 ^
+  -DCMAKE_PREFIX_PATH=%GRPC_SDK_ROOT% ^  //告诉 CMake 去哪里找 gRPC 和 protobuf 的配置文件（因为 find_package 需要）。
+  -DCMAKE_INSTALL_PREFIX=%CD%\install ^  //安装目录为当前目录下的 install
+  -DCMAKE_CXX_STANDARD=20 ^
+  -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL
+
+cmake --build build --config Release --target VirtualHumanGrpcProto --parallel 8  //只编译 VirtualHumanGrpcProto 这个目标（即我们自己的静态库）。编译出的VirtualHumanGrpcProto.lib，它会放在 build\Release\ 目录下。
+
+
+#重新生成 UE 项目
+
+删除项目下的 Intermediate、Binaries、.vs、Saved文件夹
+删除插件下的 Intermediate、Binaries 文件夹
+右键 .uproject → Generate Visual Studio project files
+打开 .sln → 清理解决方案 → 生成解决方案

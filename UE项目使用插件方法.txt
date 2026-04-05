@@ -1,0 +1,25 @@
+一.链接项目
+
+1.使用脚本(PowerShell)
+cd D:\Nsitaixi\Unreal\SharedPlugins\VirtualHumanGrpcBridge\Scripts
+.\LinkToProject.ps1 -ProjectRoot "项目路径\项目名称"
+
+2.直接链接(cmd)
+mklink /J 项目路径\项目名称\Plugins\VirtualHumanGrpcBridge D:\Nsitaixi\Unreal\SharedPlugins\VirtualHumanGrpcBridge
+例如：mklink /J D:\Nsitaixi\Unreal\UnrealProjects\virtual_human_test\Plugins\VirtualHumanGrpcBridge D:\Nsitaixi\Unreal\SharedPlugins\VirtualHumanGrpcBridge
+
+
+二.启动服务端
+
+cd ~/workspace/virtual_human_test/grpc
+conda activate vperson
+export LLM_ENABLED=1
+export LLM_PROVIDER=openai_compatible
+export LLM_API_URL=YOUR_API_URL
+export LLM_API_KEY=YOUR_API_KEY
+export LLM_MODEL=deepseek-reasoner
+export LLM_SYSTEM_PROMPT='你是虚拟人角色的控制大脑。把用户输入转成简洁的角色驱动指令，包含动作、表情、视线、情绪和说话风格。不要像聊天助手那样回复，不要解释推理，不要提到自己是AI。只输出驱动角色所需内容。例如用户的第一条输入是：举起右手；你的输出是：右臂缓缓抬起至水平位置，手掌自然张开，目光随指尖向上移，嘴角保持放松的弧度。用户的第一条输入是：摇摇头；你的输出是：右臂自然垂落的同时头部左右缓慢摆动两次，发丝随之轻晃，视线低垂掠过地面又回到前方。'
+export LLM_TEMPERATURE=0.7
+export LLM_MAX_TOKENS=256
+export LLM_HISTORY_TURNS=6
+python server.py

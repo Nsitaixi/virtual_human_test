@@ -1,0 +1,343 @@
+该项目正式开始前，进行的准备工作。即我在部署环境，进行各类测试时的操作留痕（早期测试阶段的代码未给出）。若只想复现该项目，下述操作存在大量冗余操作。
+
+
+sudo apt-get install build-essential autoconf libtool pkg-config
+sudo apt update && sudo apt upgrade
+sudo apt-get install cmake
+sudo apt update && sudo apt upgrade
+sudo apt-get install clang libc++-dev
+git clone --recursive -b v1.78.1 https://github.com/grpc/grpc
+cd grpc
+git submodule update --init
+mkdir -p cmake/build
+cd cmake/build
+cmake -DCMAKE_CXX_STANDARD=17 -DOPENSSL_NO_ASM=ON ../..
+将虚拟机的内存从4GB提高至13GB （4处理器，每个3核，共12核）（实测需要大约8G内存，才够12核的并行处理）
+make -j$(nproc)
+sudo make install
+ls /usr/local/lib/libgrpc*
+ls /usr/local/include/grpc++
+
+cd ~/grpc/examples/cpp/helloworld
+mkdir -p cmake/build
+pushd cmake/build
+cmake -DCMAKE_PREFIX_PATH=/usr/local ../..
+make -j$(nproc)
+./greeter_server
+看到输出Server listening on 0.0.0.0:50051
+打开第二个终端
+cd ~/grpc/examples/cpp/helloworld/cmake/build
+./greeter_client
+看到输出Greeter received: Hello world
+
+
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y build-essential cmake git pkg-config \
+    libssl-dev libffi-dev python3-dev python3-venv \
+    protobuf-compiler libprotobuf-dev \
+    libsndfile1 ffmpeg sox libasound2-dev \
+    libopenblas-dev libblas-dev liblapack-dev \
+    libgflags-dev libgoogle-glog-dev
+
+# 1. 添加 pin（防止被 Ubuntu 仓库覆盖）
+wget https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin
+sudo mv cuda-wsl-ubuntu.pin /etc/apt/preferences.d/cuda-repository-pin-600
+# 2. 下载 CUDA 13.0 本地仓库包
+wget https://developer.download.nvidia.com/compute/cuda/13.0.0/local_installers/cuda-repo-wsl-ubuntu-13-0-local_13.0.0-1_amd64.deb
+# 3. 安装本地仓库
+sudo dpkg -i cuda-repo-wsl-ubuntu-13-0-local_13.0.0-1_amd64.deb
+# 4. 安装 keyring（关键！否则 apt 会报错）
+sudo cp /var/cuda-repo-wsl-ubuntu-13-0-local/cuda-*-keyring.gpg /usr/share/keyrings/
+# 5. 更新 apt
+sudo apt-get update
+# 6. 安装 CUDA Toolkit（推荐只装 toolkit，不装 driver）
+sudo apt-get -y install cuda-toolkit-13-0
+
+echo 'export PATH=/usr/local/cuda-13.0/bin:$PATH' >> ~/.bashrc
+echo 'export LD_LIBRARY_PATH=/usr/local/cuda-13.0/lib64:$LD_LIBRARY_PATH' >> ~/.bashrc
+source ~/.bashrc
+nvcc --version
+
+
+
+# 1. 下载 cuDNN 本地仓库
+wget https://developer.download.nvidia.com/compute/cudnn/9.20.0/local_installers/cudnn-local-repo-ubuntu2404-9.20.0_1.0-1_amd64.deb
+# 2. 安装仓库
+sudo dpkg -i cudnn-local-repo-ubuntu2404-9.20.0_1.0-1_amd64.deb
+# 3. 安装 keyring（必须，否则 apt 会报错）
+sudo cp /var/cudnn-local-repo-ubuntu2404-9.20.0/cudnn-*-keyring.gpg /usr/share/keyrings/
+# 4. 更新 apt
+sudo apt-get update
+# 5. 安装 cuDNN（CUDA 13 专用版本）
+sudo apt-get -y install cudnn9-cuda-13
+
+sudo apt-get -y install libcudnn9-dev-cuda-13
+ls /usr/lib/x86_64-linux-gnu | grep cudnn
+
+
+
+#下载 Anaconda 安装包
+wget https://repo.anaconda.com/archive/Anaconda3-2025.12-2-Linux-x86_64.sh
+#运行安装脚本
+bash Anaconda3-2025.12-2-Linux-x86_64.sh
+#让 conda 生效
+source ~/.bashrc
+#验证安装
+conda info
+#更新 conda
+conda update -n base -c defaults conda -y
+#关闭自动进入 base
+conda config --set auto_activate_base false
+#安装 mamba
+conda install -n base -c conda-forge mamba -y
+
+#创建AI环境
+mamba create -n vperson python=3.11 -y
+#进入虚拟环境
+conda activate vperson
+#升级 pip
+pip install --upgrade pip
+#安装 PyTorch
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu130
+#验证安装
+python -c "import torch; print(torch.__version__)"
+python -c "import torch; print(torch.cuda.is_available())"
+#安装ONNX Runtime 生成式AI扩展库 的CUDA版本
+pip install onnxruntime-genai-cuda
+#安装 gRPC Python
+python -m pip install grpcio grpcio-tools
+#WebSocket / 后端服务
+python -m pip install fastapi uvicorn websockets
+#音频处理（TTS链路）
+python -m pip install librosa soundfile
+#推理优化
+python -m pip install polygraphy onnx-simplifier
+
+
+
+#在Windows中下载对应版本的TensorRT
+https://developer.download.nvidia.com/compute/tensorrt/10.15.1/local_installers/nv-tensorrt-local-repo-ubuntu2404-10.15.1-cuda-13.1_1.0-1_amd64.deb
+
+#将安装包剪切到Linux根目录下（如：\\wsl.localhost\Ubuntu-24.04\home\你的用户名）
+#打开一个新的Linux终端
+
+# 1. 安装本地仓库
+sudo dpkg -i nv-tensorrt-local-repo-ubuntu2404-10.15.1-cuda-13.1_1.0-1_amd64.deb
+# 2. 添加 keyring
+sudo cp /var/nv-tensorrt-local-repo-ubuntu2404-10.15.1-cuda-13.1/*-keyring.gpg /usr/share/keyrings/
+# 3. 更新 apt
+sudo apt-get update
+# 4. 安装 TensorRT（完整版：C++ + Python）
+sudo apt-get install -y tensorrt
+
+#进入 vperson 环境
+conda activate vperson
+#安装 Python binding（pip 会自动安装 CUDA 13 版本）
+python -m pip install tensorrt
+
+#系统级验证TensorRT
+dpkg -l | grep TensorRT
+#验证trtexec（核心工具）
+trtexec --version
+#Python 验证TensorRT
+python -c "import tensorrt as trt; print(trt.__version__)"
+
+
+现在已经完整搭建好了如下的架构：
+WSL2 Ubuntu
+├── CUDA 13
+├── cuDNN 9
+├── TensorRT 10.15  ← 新增
+│   ├── libnvinfer.so
+│   ├── trtexec
+│
+├── gRPC C++
+│
+├── anaconda3/envs/vperson
+│   ├── torch
+│   ├── onnxruntime
+│   ├── grpcio
+│   ├── tensorrt (pip)
+│
+└── 项目代码
+
+
+#激活环境
+conda activate vperson
+#补充安装依赖
+python -m pip install onnxscript
+python -m pip install pycuda
+
+#创建并进入项目目录
+mkdir -p ~/workspace/virtual_human/models
+cd ~/workspace/virtual_human/models
+#激活环境
+conda activate vperson
+#写入torch_model.py和export_onnx.py
+
+#导出 ONNX
+python export_onnx.py
+#返回系统环境
+conda deactivate
+
+#ONNX → TensorRT
+trtexec --onnx=model.onnx --saveEngine=model.engine
+#验证（应有model.engine）
+ls
+
+
+
+#创建并进入项目目录
+mkdir -p ~/workspace/virtual_human/runtime
+cd ~/workspace/virtual_human/runtime
+#写入trt_infer.py
+
+#创建并进入 grpc 目录
+mkdir -p ~/workspace/virtual_human/grpc
+cd ~/workspace/virtual_human/grpc
+#写入avatar.proto
+
+#回到 vperson 环境
+conda activate vperson
+#生成代码
+python -m grpc_tools.protoc -I. \
+  --python_out=. \
+  --grpc_python_out=. \
+  avatar.proto
+
+#写入server.py和client.py
+#启动 Server
+python server.py
+另开终端运行 Client
+conda activate vperson
+cd ~/workspace/virtual_human/grpc
+python client.py
+
+
+
+#创建并进入工作路径
+mkdir -p workspace/virtual_human_streaming
+cd workspace/virtual_human_streaming
+#创建子目录
+mkdir models grpc runtime assets
+
+#在 vperson 环境中安装运行所需的包（理应都无缺）
+conda activate vperson
+python -m pip install --upgrade pip
+python -m pip install torch onnx onnxruntime-gpu tensorrt pycuda \
+    grpcio grpcio-tools fastapi uvicorn websockets \
+    librosa soundfile numpy scipy soundfile
+#若缺 polygraphy / onnx-simplifier 可后续按需 pip 安装
+python -m pip install polygraphy onnx-simplifier
+
+#将torch_model.py和export_onnx.py放入~/workspace/virtual_human_streaming/models/中
+#vperson环境中执行
+cd ~/workspace/virtual_human_streaming/models
+python export_onnx.py
+
+# 可检查 input name:
+python - <<'PY'
+import onnx
+m=onnx.load("model.onnx")
+for i in m.graph.input: print("IN:", i.name)
+for o in m.graph.output: print("OUT:", o.name)
+PY
+
+#将 ONNX 转为 TensorRT engine 的标准动态 shape 命令
+trtexec \
+  --onnx=model.onnx \
+  --saveEngine=model.engine \
+  --memPoolSize=workspace:4096M \
+  --stronglyTyped \
+  --minShapes=audio_feat:1x1x128 \
+  --optShapes=audio_feat:1x160x128 \
+  --maxShapes=audio_feat:1x1600x128
+
+#将ttrt_infer.py和空文件__init__.py放入~/workspace/virtual_human_streaming/runtime/中
+#将avatar_stream.proto放入~/workspace/virtual_human_streaming/grpc/proto/中
+
+# 生成 avatar_stream_pb2.py 和 avatar_stream_pb2_grpc.py
+cd ~/workspace/virtual_human_streaming/grpc
+python -m grpc_tools.protoc -I=./proto --python_out=. --grpc_python_out=. ./proto/avatar_stream.proto
+
+
+#将server.py和client.py放入~/workspace/virtual_human_streaming/grpc/中
+#启动 Server
+python server.py
+
+#将sample.wav放入~/workspace/virtual_human_streaming/assets/中
+#sample.wav的标准输入要求：
+采样率: 16000 Hz
+声道: 单声道 (mono)
+格式: PCM 16-bit
+容器: WAV
+
+#安装ffmpeg以转换音频
+sudo apt install ffmpeg
+#标准转换命令（示例）
+cd ~/workspace/virtual_human_streaming/assets
+ffmpeg -f s16le -ar 16000 -ac 1 -i 16k.pcm sample.wav
+
+#另开终端运行 Client
+conda activate vperson
+cd ~/workspace/virtual_human_streaming/grpc
+python client.py
+
+
+
+
+
+
+
+
+在“D:\Nsitaixi\Unreal\Epic Games\Launcher\Engine\Binaries\Win64”中找到“UnrealVersionSelector.exe”，剪切到“D:\Nsitaixi\Unreal\Epic Games\UE_5.7\Engine\Binaries\Win64”中，右键以管理员身份运行
+
+#WSL端创建Server端
+
+
+#创建目录并检查更新
+mkdir -p ~/workspace/virtual_human_test/{models,grpc/proto,runtime}
+cd ~/workspace/virtual_human_test
+conda activate vperson
+python -m pip install --upgrade pip
+python -m pip install numpy scipy soundfile librosa onnx onnxruntime-gpu \
+    torch torchvision torchaudio tensorrt pycuda grpcio grpcio-tools
+
+#导出ONNX
+cd ~/workspace/virtual_human_test/models
+python export_onnx.py
+
+#ONNX→TensorRT
+trtexec \
+  --onnx=model.onnx \
+  --saveEngine=model.engine \
+  --memPoolSize=workspace:4096M \
+  --stronglyTyped \
+  --minShapes=audio_feat:1x1x128 \
+  --optShapes=audio_feat:1x160x128 \
+  --maxShapes=audio_feat:1x1600x128
+
+#使用proto文件生成代码
+cd ~/workspace/virtual_human_test/grpc
+python -m grpc_tools.protoc -I./proto \
+  --python_out=. \
+  --grpc_python_out=. \
+  ./proto/avatar_stream.proto
+
+#测试WSL能否连接到UE，并读取到音频文件
+
+
+#只需确保“sample.wav”已经放在“D:\Nsitaixi\Unreal\UnrealProjects\virtual_human_test\Assets”中
+
+#启动Server端
+cd ~/workspace/virtual_human_test/grpc
+conda activate vperson
+python server.py
+
+#另开一个WSL终端测试Windows音频文件
+cd ~/workspace/virtual_human_test/grpc
+conda activate vperson
+python client.py --wav /mnt/d/Nsitaixi/Unreal/UnrealProjects/virtual_human_test/Assets/sample.wav
+
+
+

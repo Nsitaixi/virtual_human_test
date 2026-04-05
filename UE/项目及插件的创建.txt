@@ -1,0 +1,24 @@
+#配置UE 5.7.4
+
+
+#创建项目
+打开 UE 5.7.4
+创建 C++ 项目
+项目名：virtual_human_test
+路径：D:\Nsitaixi\Unreal\UnrealProjects
+
+#创建共享插件（若已创建则只创建Plugins目录）
+Edit -> Plugins
+New Plugin
+选 Blank
+名称：VirtualHumanGrpcBridge
+创建后，把插件目录挪到共享位置：D:\Nsitaixi\Unreal\SharedPlugins\VirtualHumanGrpcBridge
+
+#创建UE插件软链接（cmd）
+mklink /J D:\Nsitaixi\Unreal\UnrealProjects\virtual_human_test\Plugins\VirtualHumanGrpcBridge D:\Nsitaixi\Unreal\SharedPlugins\VirtualHumanGrpcBridge
+
+#确保在项目里启用插件（若共享插件之前已创建，则直接关闭UE）
+Edit -> Plugins
+搜索 VirtualHumanGrpcBridge
+勾选启用
+关闭UE

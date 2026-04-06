@@ -12,6 +12,8 @@
 # 用到的模型
 
 TTS:https://github.com/2noise/ChatTTS
+
 V2F: https://huggingface.co/nvidia/Audio2Face-3D-3.0
      https://huggingface.co/nvidia/Audio2Emotion-v3.0
+
 V2M: https://github.com/PantoMatrix/PantoMatrix.git

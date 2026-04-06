@@ -7,4 +7,11 @@
 简单说，它实现的是一个可以“说话、响应、做表情、做动作”的实时虚拟人系统。
 
 # 注意事项
-系统内存 <= 32GB 无法支撑该插件在UE5.7项目中正常运行。
+系统内存 <= 32GB 可能无法支撑该插件在UE5.7项目中正常运行。
+
+# 用到的模型
+
+TTS:https://github.com/2noise/ChatTTS
+V2F: https://huggingface.co/nvidia/Audio2Face-3D-3.0
+     https://huggingface.co/nvidia/Audio2Emotion-v3.0
+V2M: https://github.com/PantoMatrix/PantoMatrix.git
